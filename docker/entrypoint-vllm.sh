@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+# Inject PUBLIC_KEY if provided (RunPod convention)
+if [ -n "$PUBLIC_KEY" ]; then
+    mkdir -p /root/.ssh
+    echo "$PUBLIC_KEY" >> /root/.ssh/authorized_keys
+    chmod 700 /root/.ssh
+    chmod 600 /root/.ssh/authorized_keys
+fi
+
 # Start SSH daemon for RunPod console access and health checks
 /usr/sbin/sshd
 
@@ -21,7 +29,8 @@ CMD="$CMD --dtype $DTYPE"
 CMD="$CMD --tensor-parallel-size $TP_SIZE"
 CMD="$CMD --max-model-len $MAX_MODEL_LEN"
 CMD="$CMD --host $HOST --port $PORT"
-CMD="$CMD --api-key dummy"
+# No --api-key: Claude Code sends OAuth tokens that won't match a fixed key.
+# Network access is controlled by pod isolation instead.
 
 # Optional quantization
 if [ -n "$QUANTIZATION" ]; then

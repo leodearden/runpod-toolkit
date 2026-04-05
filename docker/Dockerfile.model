@@ -1,0 +1,13 @@
+ARG BASE_IMAGE=leosiriusdawn/runpod-vllm:latest
+FROM ${BASE_IMAGE}
+
+ARG MODEL_NAME
+ARG HF_HOME=/models
+
+ENV HF_HOME=${HF_HOME}
+ENV MODEL_NAME=${MODEL_NAME}
+
+# Download model weights at build time
+RUN pip install huggingface_hub && \
+    python3 -c "from huggingface_hub import snapshot_download; snapshot_download('${MODEL_NAME}')" && \
+    pip cache purge
