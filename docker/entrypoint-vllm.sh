@@ -40,6 +40,9 @@ fi
 # Enable prefix caching by default (great for code completion)
 CMD="$CMD --enable-prefix-caching"
 
+# Enable tool calling (Claude Code sends tool_use blocks)
+CMD="$CMD --enable-auto-tool-choice --tool-call-parser hermes"
+
 # Use models cache directory if it exists (volume mount)
 if [ -d "/workspace" ]; then
     export HF_HOME="${HF_HOME:-/workspace/models}"
