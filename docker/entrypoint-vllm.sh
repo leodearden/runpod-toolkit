@@ -15,7 +15,7 @@ HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 
 # Build vLLM command
-CMD="python -m vllm.entrypoints.openai.api_server"
+CMD="python3 -m vllm.entrypoints.openai.api_server"
 CMD="$CMD --model $MODEL_NAME"
 CMD="$CMD --dtype $DTYPE"
 CMD="$CMD --tensor-parallel-size $TP_SIZE"
@@ -32,8 +32,11 @@ fi
 CMD="$CMD --enable-prefix-caching"
 
 # Use models cache directory if it exists (volume mount)
-if [ -d "/workspace/models" ]; then
-    export HF_HOME=/workspace/models
+if [ -d "/workspace" ]; then
+    export HF_HOME="${HF_HOME:-/workspace/models}"
+    mkdir -p /workspace/tmp /workspace/torch_cache
+    export TMPDIR=/workspace/tmp
+    export TORCHINDUCTOR_CACHE_DIR=/workspace/torch_cache
 fi
 
 echo "Starting vLLM: $CMD"
