@@ -1,0 +1,11 @@
+model: "Qwen/Qwen3-Coder-Next"
+variants:
+  fp8:
+    dtype: "float16"
+    quantization: "fp8"
+    gpu_requirements:
+      min_vram_gb: 80
+      min_tp: 1
+    max_model_len: 131072
+vllm_args:
+  enable-prefix-caching: true

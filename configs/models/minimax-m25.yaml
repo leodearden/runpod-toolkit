@@ -1,0 +1,11 @@
+model: "MiniMaxAI/MiniMax-M2.5"
+variants:
+  fp8:
+    dtype: "float16"
+    quantization: "fp8"
+    gpu_requirements:
+      min_vram_gb: 240
+      min_tp: 3
+    max_model_len: 131072
+vllm_args:
+  enable-prefix-caching: true

@@ -1,0 +1,11 @@
+model: "Qwen/Qwen3-Coder-30B-A3B-Instruct"
+variants:
+  q4:
+    dtype: "float16"
+    quantization: null
+    gpu_requirements:
+      min_vram_gb: 24
+      min_tp: 1
+    max_model_len: 32768
+vllm_args:
+  enable-prefix-caching: true

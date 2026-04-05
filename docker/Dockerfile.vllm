@@ -1,0 +1,15 @@
+FROM vllm/vllm-openai:v0.17.2
+
+# RunPod needs SSH for health checks and debugging
+RUN apt-get update && apt-get install -y openssh-server && \
+    mkdir -p /run/sshd && \
+    echo 'root:runpod' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint-vllm.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8000 22
+
+ENTRYPOINT ["/entrypoint.sh"]
