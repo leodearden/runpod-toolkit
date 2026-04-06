@@ -78,9 +78,8 @@ def start_vllm_pod(
         gpu_type=spec.gpu_type,
         gpu_count=spec.gpu_count,
         image=VLLM_DOCKER_IMAGE,
-        volume_id=spec.volume_id,
-        env=env_vars,
-        ports="8000/http",
+        network_volume_id=spec.volume_id,
+        env_vars=env_vars,
     )
     logger.info("Created vLLM pod %s (%s) for %s", pod.id, pod.name, spec.model_id)
     return pod

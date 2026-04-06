@@ -1,0 +1,11 @@
+ARG BASE_IMAGE=leosiriusdawn/runpod-vllm:latest
+FROM ${BASE_IMAGE}
+
+ARG MODEL_NAME
+ARG MODEL_DIR
+
+ENV HF_HOME=/models
+ENV MODEL_NAME=${MODEL_NAME}
+
+# Copy pre-downloaded HF cache (blobs + refs + snapshots with relative symlinks)
+COPY . /models/hub/${MODEL_DIR}/

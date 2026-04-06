@@ -37,6 +37,11 @@ if [ -n "$QUANTIZATION" ]; then
     CMD="$CMD --quantization $QUANTIZATION"
 fi
 
+# Optional tokenizer mode (use 'slow' to fix Mistral Tekkenizer add_special_tokens bug)
+if [ -n "$TOKENIZER_MODE" ]; then
+    CMD="$CMD --tokenizer-mode $TOKENIZER_MODE"
+fi
+
 # Enable prefix caching by default (great for code completion)
 CMD="$CMD --enable-prefix-caching"
 
