@@ -29,6 +29,34 @@ CMD="$CMD --dtype $DTYPE"
 CMD="$CMD --tensor-parallel-size $TP_SIZE"
 CMD="$CMD --max-model-len $MAX_MODEL_LEN"
 CMD="$CMD --host $HOST --port $PORT"
+# Always trust remote code: MiniMax variants and other newer architectures
+# ship custom modeling code in their HF repos that vLLM must execute to load
+# the model. We control the model list, so this is safe.
+CMD="$CMD --trust-remote-code"
+
+# GPU memory utilization. vLLM defaults to 0.9, but in v0.19 the new
+# CUDA-graph memory profiler reserves graph memory inside the same budget,
+# leaving very little KV cache headroom on tight large-model pods. 0.95
+# matches vLLM's own recommended bump and works on both H200 and 96 GB
+# Blackwell. Override per-pod via the GPU_MEMORY_UTIL env var.
+GPU_MEMORY_UTIL="${GPU_MEMORY_UTIL:-0.95}"
+CMD="$CMD --gpu-memory-utilization $GPU_MEMORY_UTIL"
+
+# Max concurrent sequences. vLLM defaults to 1024, which pre-allocates a
+# sampler softmax buffer per slot during warm-up — at 0.97 GMU on tight
+# large-model pods this OOMs the sampler warmup step. Each eval pod only
+# ever serves one implementer at a time, so 16 is plenty.
+MAX_NUM_SEQS="${MAX_NUM_SEQS:-16}"
+CMD="$CMD --max-num-seqs $MAX_NUM_SEQS"
+
+# Optional eager mode: disables CUDA-graph capture. Workaround for the
+# qwen3-coder-next-fp8 startup hang where vLLM stays alive with the model
+# loaded into VRAM but /health never returns 200 (vLLM #35504, #34437).
+# Set ENFORCE_EAGER=1 in the pod env to enable. Costs ~10-20% throughput.
+if [ -n "$ENFORCE_EAGER" ]; then
+    CMD="$CMD --enforce-eager"
+fi
+
 # No --api-key: Claude Code sends OAuth tokens that won't match a fixed key.
 # Network access is controlled by pod isolation instead.
 
@@ -45,8 +73,14 @@ fi
 # Enable prefix caching by default (great for code completion)
 CMD="$CMD --enable-prefix-caching"
 
-# Enable tool calling (Claude Code sends tool_use blocks)
-CMD="$CMD --enable-auto-tool-choice --tool-call-parser hermes"
+# Enable tool calling (Claude Code sends tool_use blocks). Parser is per-model:
+# - Devstral / Mistral models → mistral
+# - Qwen models → hermes
+# - Empty → disable tool calling
+TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-hermes}"
+if [ -n "$TOOL_CALL_PARSER" ]; then
+    CMD="$CMD --enable-auto-tool-choice --tool-call-parser $TOOL_CALL_PARSER"
+fi
 
 # Use models cache directory if it exists (volume mount)
 if [ -d "/workspace" ]; then

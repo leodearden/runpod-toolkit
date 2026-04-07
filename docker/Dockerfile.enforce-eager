@@ -1,0 +1,8 @@
+# Layer the ENFORCE_EAGER entrypoint on top of the current :latest.
+# Avoids a full rebuild — only adds a small entrypoint script layer.
+FROM leosiriusdawn/runpod-vllm:latest
+
+COPY entrypoint-vllm.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
