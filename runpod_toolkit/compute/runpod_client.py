@@ -26,14 +26,28 @@ Example:
 """
 
 import logging
+import socket
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Iterator, List, Optional
 
+import backoff
+import requests.exceptions
+
 from runpod_toolkit.config import RunPodConfig
 
 logger = logging.getLogger(__name__)
+
+# Transient network errors worth retrying on. Intentionally explicit —
+# do NOT use requests.exceptions.RequestException (parent class covers
+# auth and malformed-request errors that should not be retried).
+_TRANSIENT = (
+    requests.exceptions.ConnectionError,
+    socket.gaierror,
+    ConnectionResetError,
+    TimeoutError,
+)
 
 # Lazy import runpod to handle missing SDK gracefully
 _runpod = None
@@ -642,8 +656,13 @@ class RunPodClient:
                 raise
             raise RunPodError(f"Failed to create CPU pod: {e}") from e
 
+    @backoff.on_exception(backoff.expo, _TRANSIENT, max_tries=3, logger=logger)
     def get_pod(self, pod_id: str) -> PodInfo:
         """Get pod information.
+
+        Retries on transient network errors (ConnectionError, DNS
+        failures, ConnectionReset, TimeoutError) up to 3 times with
+        exponential backoff.
 
         Args:
             pod_id: Pod ID.
@@ -662,13 +681,19 @@ class RunPodClient:
 
             return PodInfo.from_api(response)
 
+        except _TRANSIENT:
+            raise  # let backoff retry
         except Exception as e:
             if isinstance(e, RunPodError):
                 raise
             raise RunPodError(f"Failed to get pod {pod_id}: {e}") from e
 
+    @backoff.on_exception(backoff.expo, _TRANSIENT, max_tries=3, logger=logger)
     def list_pods(self) -> List[PodInfo]:
         """List all pods.
+
+        Retries on transient network errors up to 3 times with
+        exponential backoff.
 
         Returns:
             List of PodInfo objects.
@@ -681,11 +706,18 @@ class RunPodClient:
 
             return [PodInfo.from_api(pod) for pod in response]
 
+        except _TRANSIENT:
+            raise  # let backoff retry
         except Exception as e:
             raise RunPodError(f"Failed to list pods: {e}") from e
 
+    @backoff.on_exception(backoff.expo, _TRANSIENT, max_tries=5, logger=logger)
     def terminate_pod(self, pod_id: str) -> bool:
         """Terminate a pod.
+
+        Retries on transient network errors up to 5 times (more than
+        read operations) because a leaked pod costs real money
+        (~$1.69/hr). Uses exponential backoff.
 
         Args:
             pod_id: Pod ID.
@@ -703,6 +735,8 @@ class RunPodClient:
             # Response is typically empty on success
             return True
 
+        except _TRANSIENT:
+            raise  # let backoff retry
         except Exception as e:
             raise RunPodError(f"Failed to terminate pod {pod_id}: {e}") from e
 
